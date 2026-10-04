@@ -1,13 +1,15 @@
 //! Damage is reported, never a panic, and every walk ends: unusable
-//! headers, cycles in b-trees and overflow chains, pages out of range,
-//! truncated files, and (property tests) arbitrary bytes and real files
-//! damaged anywhere.
+//! headers, cycles in b-trees, overflow chains and freelists, pages out of
+//! range, truncated files, and (property tests) arbitrary bytes and real
+//! files damaged anywhere, read and recovered from.
 
 mod support;
 
 use sqlite::{Database, Error};
 
 const PAGE_SIZE: usize = 512;
+/// The page size of the recovery fixtures (SQLite's default).
+const RECOVERY_PAGE_SIZE: usize = 4096;
 /// The b-tree page header's right-most child pointer (interior pages).
 const RIGHT_MOST_POINTER: usize = 8;
 
@@ -106,6 +108,55 @@ fn a_truncated_file_reads_what_is_left() {
     assert!(read > 0 && read < all, "{read} of {all}");
 }
 
+/// A freelist trunk page that names itself as the next trunk: reported,
+/// and the walk ends; the records on the freelist are still recovered.
+#[test]
+fn a_freelist_cycle_is_reported_and_ends() {
+    let mut file = support::fixture("recovery/deleted.db");
+    let healthy = Database::open(&file).unwrap().recover().records.len();
+    let trunk = u32::from_be_bytes(file[32..36].try_into().unwrap());
+    let trunk_offset = (trunk as usize - 1) * RECOVERY_PAGE_SIZE;
+    set_u32(&mut file, trunk_offset, trunk);
+    let recovered = Database::open(&file).unwrap().recover();
+    let expected = format!("freelist: page {trunk} is already used");
+    assert!(
+        recovered
+            .problems
+            .iter()
+            .any(|problem| problem.contains(&expected)),
+        "{:?}",
+        recovered.problems
+    );
+    assert_eq!(recovered.records.len(), healthy);
+}
+
+/// A freeblock that points back at itself: reported, and the chain ends.
+#[test]
+fn a_freeblock_cycle_is_reported_and_ends() {
+    let mut file = support::fixture("recovery/deleted.db");
+    let db = Database::open(&file).unwrap();
+    let page = db
+        .recover()
+        .records
+        .iter()
+        .find(|record| record.area == sqlite::Area::Freeblock)
+        .unwrap()
+        .page as usize;
+    let header = (page - 1) * RECOVERY_PAGE_SIZE;
+    let first = u16::from_be_bytes([file[header + 1], file[header + 2]]);
+    let at = header + usize::from(first);
+    file[at..at + 2].copy_from_slice(&first.to_be_bytes());
+    let recovered = Database::open(&file).unwrap().recover();
+    assert!(
+        recovered
+            .problems
+            .iter()
+            .any(|problem| problem.starts_with(&format!("page {page}: freeblock at {first}"))),
+        "{:?}",
+        recovered.problems
+    );
+}
+
 /// A header page count that a legacy writer may have left stale (the change
 /// counter doesn't match the version-valid-for number) gives way to the
 /// file's size.
@@ -123,11 +174,12 @@ mod properties {
     use proptest::prelude::*;
     use sqlite::Database;
 
-    /// At most every page holds a cell per two bytes, in every tree.
-    fn plausible(walk: &super::support::Walk, db: &Database) -> bool {
+    /// At most every page holds a cell per two bytes, in every tree; a
+    /// recovered record takes at least four bytes of the input.
+    fn plausible(walk: &super::support::Walk, db: &Database, input: usize) -> bool {
         let trees = db.schema.len() + 1;
         let most = db.page_count as usize * (db.header.page_size as usize / 2) * trees;
-        walk.rows + walk.index_entries <= most
+        walk.rows + walk.index_entries <= most && walk.recovered <= input / 4
     }
 
     fn damage(mut file: Vec<u8>, flips: &[(usize, u8)], cut: usize) -> Vec<u8> {
@@ -155,7 +207,7 @@ mod properties {
             file.extend(pages);
             let db = Database::open(&file).unwrap();
             let walk = super::support::walk(&db);
-            prop_assert!(plausible(&walk, &db));
+            prop_assert!(plausible(&walk, &db, file.len()));
         }
 
         /// Real files damaged anywhere and cut anywhere.
@@ -168,7 +220,23 @@ mod properties {
             let file = damage(super::support::fixture(fixture), &flips, cut);
             if let Ok(db) = Database::open(&file) {
                 let walk = super::support::walk(&db);
-                prop_assert!(plausible(&walk, &db));
+                prop_assert!(plausible(&walk, &db, file.len()));
+            }
+        }
+
+        /// Databases with deleted records damaged anywhere and cut
+        /// anywhere: freeblock chains, freelists, freed cells and their
+        /// overflow chains.
+        #[test]
+        fn damaged_deletions(
+            fixture in prop::sample::select(vec!["recovery/deleted.db", "recovery/chromium.db", "recovery/churn.db"]),
+            flips in proptest::collection::vec((any::<usize>(), any::<u8>()), 1..40),
+            cut in 0usize..110_000,
+        ) {
+            let file = damage(super::support::fixture(fixture), &flips, cut);
+            if let Ok(db) = Database::open(&file) {
+                let walk = super::support::walk(&db);
+                prop_assert!(plausible(&walk, &db, file.len()));
             }
         }
 
@@ -182,7 +250,23 @@ mod properties {
             let wal = damage(super::support::fixture("wal.db-wal"), &flips, cut);
             if let Ok(db) = Database::open_with_wal(&file, &wal) {
                 let walk = super::support::walk(&db);
-                prop_assert!(plausible(&walk, &db));
+                prop_assert!(plausible(&walk, &db, file.len() + wal.len()));
+            }
+        }
+
+        /// A log holding older versions of pages with deleted rows, damaged
+        /// anywhere and cut anywhere: every frame is searched, whatever its
+        /// state.
+        #[test]
+        fn damaged_logs_with_older_versions(
+            flips in proptest::collection::vec((any::<usize>(), any::<u8>()), 1..40),
+            cut in 0usize..13_000,
+        ) {
+            let file = super::support::fixture("recovery/recovery-wal.db");
+            let wal = damage(super::support::fixture("recovery/recovery-wal.db-wal"), &flips, cut);
+            if let Ok(db) = Database::open_with_wal(&file, &wal) {
+                let walk = super::support::walk(&db);
+                prop_assert!(plausible(&walk, &db, file.len() + wal.len()));
             }
         }
     }

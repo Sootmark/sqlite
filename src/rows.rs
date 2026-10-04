@@ -52,9 +52,21 @@ impl<'a> Rows<'a> {
         std::mem::take(&mut self.cursor.problems)
     }
 
-    fn row(&mut self, entry: &Entry) -> Row {
+    /// The walk so far.
+    pub(crate) fn cursor(&self) -> &Cursor<'a> {
+        &self.cursor
+    }
+
+    /// The next row, and how many values its record stores.
+    pub(crate) fn next_counted(&mut self) -> Option<(Row, usize)> {
+        let entry = self.cursor.next_entry()?;
+        Some(self.row(&entry))
+    }
+
+    fn row(&mut self, entry: &Entry) -> (Row, usize) {
         let rowid = entry.rowid.unwrap_or_default();
         let (stored, problem) = record::decode(&entry.payload, self.encoding);
+        let stored_count = stored.len();
         if let Some(problem) = problem {
             self.cursor
                 .problems
@@ -65,11 +77,12 @@ impl<'a> Rows<'a> {
         } else {
             self.by_column(stored, rowid, entry.page)
         };
-        Row {
+        let row = Row {
             rowid,
             page: entry.page,
             values,
-        }
+        };
+        (row, stored_count)
     }
 
     /// The stored values placed in their columns: virtual generated columns
@@ -108,15 +121,14 @@ impl Iterator for Rows<'_> {
     type Item = Row;
 
     fn next(&mut self) -> Option<Row> {
-        let entry = self.cursor.next_entry()?;
-        Some(self.row(&entry))
+        self.next_counted().map(|(row, _)| row)
     }
 }
 
 /// A value as a column of `affinity` reads it: SQLite may store a real
 /// with no fractional part as an integer in a REAL column, and reads it
 /// back as a real.
-fn with_affinity(affinity: Affinity, value: Value) -> Value {
+pub(crate) fn with_affinity(affinity: Affinity, value: Value) -> Value {
     match (affinity, value) {
         (Affinity::Real, Value::Integer(integer)) => Value::Real(integer as f64),
         (_, value) => value,
@@ -153,6 +165,11 @@ impl<'a> IndexEntries<'a> {
     #[must_use]
     pub fn problems(&self) -> &[String] {
         &self.cursor.problems
+    }
+
+    /// The walk so far.
+    pub(crate) fn cursor(&self) -> &Cursor<'a> {
+        &self.cursor
     }
 }
 

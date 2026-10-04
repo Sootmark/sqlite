@@ -34,6 +34,20 @@ impl<'a> Pages<'a> {
         self.usable_size
     }
 
+    /// The database file's own copies of the pages the log replaces, in
+    /// page order, usable bytes only: older versions of those pages.
+    pub(crate) fn replaced_file_pages(&self) -> Vec<(u32, &'a [u8])> {
+        let mut numbers: Vec<u32> = self.wal.keys().copied().collect();
+        numbers.sort_unstable();
+        numbers
+            .into_iter()
+            .filter_map(|number| {
+                let page = self.file_page(number).ok()?;
+                Some((number, &page[..self.usable_size]))
+            })
+            .collect()
+    }
+
     /// Page `number`'s usable bytes, or why it can't be read.
     pub(crate) fn get(&self, number: u32) -> Result<&'a [u8], String> {
         if number == 0 || number > self.count {

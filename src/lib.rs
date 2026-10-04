@@ -1,6 +1,7 @@
 //! SQLite database files, read without SQLite: the header, the schema, the
-//! rows of every table and the entries of every index, and the committed
-//! frames of a write-ahead log, read from the
+//! rows of every table and the entries of every index, the committed
+//! frames of a write-ahead log, and the records of deleted rows that
+//! SQLite freed but didn't overwrite, read from the
 //! [file format specification](https://www.sqlite.org/fileformat2.html).
 //!
 //! Read-only and dependency-free, for evidence: nothing is written, no SQL
@@ -25,6 +26,32 @@
 //! # }
 //! ```
 //!
+//! Deleted records come from [`Database::recover`]: from freeblocks and
+//! unallocated space of table pages, freelist pages, and the older page
+//! versions a write-ahead log keeps, each matched with the table it fits
+//! and reported with where it was found and how sure the match is.
+//!
+//! ```no_run
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! # let file = std::fs::read("History")?;
+//! # let wal = std::fs::read("History-wal").unwrap_or_default();
+//! let db = sqlite::Database::open_with_wal(&file, &wal)?;
+//! let recovered = db.recover();
+//! for record in recovered.records.iter().chain(&recovered.older_versions) {
+//!     println!(
+//!         "{:?} rowid {:?} on page {} ({:?}, {:?}): {:?}",
+//!         record.table,
+//!         record.rowid,
+//!         record.page,
+//!         record.page_state,
+//!         record.confidence,
+//!         record.values,
+//!     );
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
 //! Damage is reported, never a panic: only a file that isn't a database, or
 //! whose header can't be used (page size, reserved bytes), is an error.
 //! Pages out of range or past the end of a truncated file, cycles in
@@ -37,6 +64,7 @@ mod bytes;
 mod header;
 mod pager;
 mod record;
+mod recover;
 mod rows;
 mod schema;
 mod sql;
@@ -46,12 +74,13 @@ use std::collections::HashMap;
 
 pub use header::{Header, TextEncoding};
 pub use record::Value;
+pub use recover::{Area, Confidence, Evidence, PageState, Recovered, RecoveredRecord};
 pub use rows::{IndexEntries, IndexEntry, Row, Rows};
 pub use schema::{Affinity, Column, Generated, SchemaEntry, Table, TableKind};
 pub use wal::WalSummary;
 
 use pager::Pages;
-use wal::Wal;
+use wal::{LogFrame, Wal};
 
 /// This crate's version, for records of what parsed them.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -120,6 +149,8 @@ pub struct Database<'a> {
     pub problems: Vec<String>,
     pages: Pages<'a>,
     schema_table: Table,
+    /// Every frame of the log, for recovery from older page versions.
+    log_frames: Vec<LogFrame<'a>>,
 }
 
 impl<'a> Database<'a> {
@@ -170,9 +201,9 @@ impl<'a> Database<'a> {
         mut problems: Vec<String>,
     ) -> Self {
         let page_count = page_count(file.len(), &header, wal.as_ref(), &mut problems);
-        let (summary, wal_pages) = match wal {
-            Some(wal) => (Some(wal.summary), wal.pages),
-            None => (None, HashMap::new()),
+        let (summary, wal_pages, log_frames) = match wal {
+            Some(wal) => (Some(wal.summary), wal.pages, wal.frames),
+            None => (None, HashMap::new(), Vec::new()),
         };
         let pages = Pages::new(
             file,
@@ -201,6 +232,7 @@ impl<'a> Database<'a> {
             problems,
             pages,
             schema_table,
+            log_frames,
         }
     }
 

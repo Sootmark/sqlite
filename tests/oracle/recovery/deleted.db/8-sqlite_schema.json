@@ -1,0 +1,1 @@
+[{"table":"sqlite_schema","kind":"deleted","rowid":4,"c0":"text:table","c1":"text:scratch","c2":"text:scratch","c3":"integer:13","c4":"text:CREATE TABLE scratch (k TEXT, v BLOB, n INTEGER)"}]

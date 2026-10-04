@@ -1,6 +1,7 @@
 //! The write-ahead log (`-wal` file): a header, then frames, each a page
 //! of the database as a transaction left it. A reader takes, for each page,
-//! the last valid frame at or before the last commit frame.
+//! the last valid frame at or before the last commit frame; the other
+//! frames are older versions of pages, kept for recovery.
 
 use std::collections::HashMap;
 
@@ -47,11 +48,37 @@ pub struct WalSummary {
     pub database_pages: u32,
 }
 
-/// A log's committed pages.
+/// A log's committed pages, and every frame.
 pub(crate) struct Wal<'a> {
     pub(crate) summary: WalSummary,
     /// Page number to its content in the last committed frame for it.
     pub(crate) pages: HashMap<u32, &'a [u8]>,
+    /// Every whole frame, in log order.
+    pub(crate) frames: Vec<LogFrame<'a>>,
+}
+
+/// Where a frame stands in the log.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum FrameState {
+    /// The last committed frame for its page: what the database reads.
+    Applied,
+    /// Committed, then replaced by a later committed frame for its page.
+    Superseded,
+    /// Valid, but after the last commit frame.
+    Uncommitted,
+    /// At or after the first frame whose salts or checksum fail.
+    Invalid,
+}
+
+/// A frame of the log, whatever its state.
+pub(crate) struct LogFrame<'a> {
+    /// Its position in the log, counting from 0.
+    pub(crate) index: usize,
+    /// The database page it holds a version of.
+    pub(crate) page_number: u32,
+    pub(crate) state: FrameState,
+    /// The page's bytes, whole.
+    pub(crate) page: &'a [u8],
 }
 
 /// The two halves of the running checksum.
@@ -105,33 +132,68 @@ impl<'a> Wal<'a> {
                 "WAL: {extra} bytes after the last whole frame (a write cut short)"
             ));
         }
+        let frames: Vec<Frame> = frames.chunks_exact(frame_size).map(Frame::read).collect();
         let mut wal = Self {
-            summary: header.summary(frames.len() / frame_size),
+            summary: header.summary(frames.len()),
             pages: HashMap::new(),
+            frames: Vec::new(),
         };
-        wal.apply(frames.chunks_exact(frame_size).map(Frame::read), header);
+        let applied = wal.apply(&frames, header);
+        wal.pages = applied
+            .iter()
+            .map(|(&page, &index)| (page, frames[index].page))
+            .collect();
+        wal.frames = wal.classify(&frames, &applied);
         Some(wal)
     }
 
-    /// Follow the frames while they are valid, and keep the pages of those
-    /// up to the last commit.
-    fn apply(&mut self, frames: impl Iterator<Item = Frame<'a>>, header: WalHeader) {
+    /// Follow the frames while they are valid, counting them; for each
+    /// page, the index of its last frame up to the last commit.
+    fn apply(&mut self, frames: &[Frame<'a>], header: WalHeader) -> HashMap<u32, usize> {
         let mut checksum = header.checksum;
         let mut uncommitted = Vec::new();
-        for frame in frames {
-            checksum = frame_checksum(checksum, &frame, header.big_endian);
+        let mut applied = HashMap::new();
+        for (index, frame) in frames.iter().enumerate() {
+            checksum = frame_checksum(checksum, frame, header.big_endian);
             let valid =
                 frame.page_number != 0 && frame.salts == header.salts && frame.checksum == checksum;
             if !valid {
                 break;
             }
             self.summary.valid_frames += 1;
-            uncommitted.push((frame.page_number, frame.page));
+            uncommitted.push((frame.page_number, index));
             if frame.commit_size != 0 {
                 self.summary.committed_frames = self.summary.valid_frames;
                 self.summary.database_pages = frame.commit_size;
-                self.pages.extend(uncommitted.drain(..));
+                applied.extend(uncommitted.drain(..));
             }
+        }
+        applied
+    }
+
+    /// Every frame with its state, given the frame applied for each page.
+    fn classify(&self, frames: &[Frame<'a>], applied: &HashMap<u32, usize>) -> Vec<LogFrame<'a>> {
+        frames
+            .iter()
+            .enumerate()
+            .map(|(index, frame)| LogFrame {
+                index,
+                page_number: frame.page_number,
+                state: self.state(index, frame.page_number, applied),
+                page: frame.page,
+            })
+            .collect()
+    }
+
+    fn state(&self, index: usize, page_number: u32, applied: &HashMap<u32, usize>) -> FrameState {
+        if index >= self.summary.valid_frames {
+            FrameState::Invalid
+        } else if index >= self.summary.committed_frames {
+            FrameState::Uncommitted
+        } else if applied.get(&page_number) == Some(&index) {
+            FrameState::Applied
+        } else {
+            FrameState::Superseded
         }
     }
 }

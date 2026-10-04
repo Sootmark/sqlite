@@ -1,9 +1,9 @@
 [package]
 name = "sootmark-sqlite"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.80"
-description = "Read-only reader of SQLite database files for forensics: header, b-trees, overflow chains, records, the schema, and committed frames of a write-ahead log, damage reported rather than fatal."
+description = "Read-only reader of SQLite database files for forensics: header, b-trees, overflow chains, records, the schema, committed frames of a write-ahead log, and recovery of deleted records, damage reported rather than fatal."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/Sootmark/sqlite"
 homepage = "https://sootmark.com"

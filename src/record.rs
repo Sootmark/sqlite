@@ -6,6 +6,8 @@ use crate::header::TextEncoding;
 
 /// Serial types from this one up are blobs (even) and text (odd).
 const FIRST_VARIABLE_TYPE: u64 = 12;
+/// A serial type is a varint, at most nine bytes.
+const MAX_SERIAL_TYPE_LEN: usize = 9;
 
 /// A value as stored: SQLite's five storage classes.
 #[derive(Debug, Clone, PartialEq)]
@@ -44,7 +46,7 @@ impl Value {
 
 /// A serial type: what a value is, and how many bytes it takes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum SerialType {
+pub(crate) enum SerialType {
     Null,
     /// A big-endian two's-complement integer of this many bytes.
     Integer(usize),
@@ -58,7 +60,7 @@ enum SerialType {
 }
 
 impl SerialType {
-    fn from_raw(raw: u64) -> Self {
+    pub(crate) fn from_raw(raw: u64) -> Self {
         match raw {
             0 => Self::Null,
             1..=4 => Self::Integer(raw as usize),
@@ -74,7 +76,7 @@ impl SerialType {
     }
 
     /// Bytes the value takes in the body.
-    fn size(self) -> u64 {
+    pub(crate) fn size(self) -> u64 {
         match self {
             Self::Null | Self::Constant(_) | Self::Reserved(_) => 0,
             Self::Integer(size) => size as u64,
@@ -83,7 +85,7 @@ impl SerialType {
         }
     }
 
-    fn value(self, bytes: &[u8], encoding: TextEncoding) -> Value {
+    pub(crate) fn value(self, bytes: &[u8], encoding: TextEncoding) -> Value {
         match self {
             Self::Null | Self::Reserved(_) => Value::Null,
             Self::Integer(_) => Value::Integer(signed_be(bytes)),
@@ -136,6 +138,36 @@ pub(crate) fn decode(payload: &[u8], encoding: TextEncoding) -> (Vec<Value>, Opt
         values.push(serial_type.value(bytes, encoding));
     }
     (values, None)
+}
+
+/// A record header read strictly, for records whose integrity is unknown:
+/// its serial types and its size, or `None` when the size doesn't fit the
+/// bytes, a serial type is cut off or reserved, or there are none or more
+/// than `max_columns`.
+pub(crate) fn strict_header(
+    payload: &[u8],
+    max_columns: usize,
+) -> Option<(Vec<SerialType>, usize)> {
+    let (size, mut cursor) = varint_at(payload, 0)?;
+    let size = usize::try_from(size).ok()?;
+    let most = cursor + max_columns * MAX_SERIAL_TYPE_LEN;
+    if size <= cursor || size > payload.len() || size > most {
+        return None;
+    }
+    let mut types = Vec::new();
+    while cursor < size {
+        if types.len() == max_columns {
+            return None;
+        }
+        let (raw, length) = varint_at(&payload[..size], cursor)?;
+        let serial_type = SerialType::from_raw(raw);
+        if matches!(serial_type, SerialType::Reserved(_)) {
+            return None;
+        }
+        types.push(serial_type);
+        cursor += length;
+    }
+    Some((types, size))
 }
 
 /// `size` bytes of `payload` from `start`, if it holds them.

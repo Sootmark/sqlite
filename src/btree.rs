@@ -15,15 +15,15 @@ use crate::pager::Pages;
 
 /// Page type flags.
 const INDEX_INTERIOR: u8 = 0x02;
-const TABLE_INTERIOR: u8 = 0x05;
+pub(crate) const TABLE_INTERIOR: u8 = 0x05;
 const INDEX_LEAF: u8 = 0x0a;
-const TABLE_LEAF: u8 = 0x0d;
+pub(crate) const TABLE_LEAF: u8 = 0x0d;
 /// B-tree page header sizes.
-const LEAF_HEADER_SIZE: usize = 8;
-const INTERIOR_HEADER_SIZE: usize = 12;
+pub(crate) const LEAF_HEADER_SIZE: usize = 8;
+pub(crate) const INTERIOR_HEADER_SIZE: usize = 12;
 /// Bytes of a cell pointer, a child pointer, and an overflow pointer.
-const CELL_POINTER_SIZE: usize = 2;
-const PAGE_NUMBER_SIZE: usize = 4;
+pub(crate) const CELL_POINTER_SIZE: usize = 2;
+pub(crate) const PAGE_NUMBER_SIZE: usize = 4;
 
 /// Which of the two b-tree families a tree belongs to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -52,7 +52,7 @@ fn min_local(u: usize) -> usize {
 
 /// Bytes of a `payload_size`-byte payload stored on the b-tree page itself,
 /// the rest going to overflow pages.
-fn local_size(kind: TreeKind, payload_size: u64, u: usize) -> usize {
+pub(crate) fn local_size(kind: TreeKind, payload_size: u64, u: usize) -> usize {
     let max = kind.max_local(u);
     if payload_size <= max as u64 {
         return payload_size as usize;
@@ -192,6 +192,7 @@ pub(crate) struct Cursor<'a> {
     kind: TreeKind,
     stack: Vec<Node<'a>>,
     visited: HashSet<u32>,
+    overflow_pages: HashSet<u32>,
     /// What went wrong on the way, in the order met.
     pub(crate) problems: Vec<String>,
 }
@@ -203,10 +204,21 @@ impl<'a> Cursor<'a> {
             kind,
             stack: Vec::new(),
             visited: HashSet::new(),
+            overflow_pages: HashSet::new(),
             problems: Vec::new(),
         };
         cursor.descend(root);
         cursor
+    }
+
+    /// The tree's pages walked so far.
+    pub(crate) fn tree_pages(&self) -> &HashSet<u32> {
+        &self.visited
+    }
+
+    /// The overflow pages read so far.
+    pub(crate) fn overflow_pages(&self) -> &HashSet<u32> {
+        &self.overflow_pages
     }
 
     /// Push page `number`, if it can be read as a page of this tree.
@@ -348,6 +360,7 @@ impl<'a> Cursor<'a> {
                     return;
                 }
             };
+            self.overflow_pages.insert(next);
             let wanted = payload_size - payload.len() as u64;
             let content = &page[PAGE_NUMBER_SIZE..];
             let take = content

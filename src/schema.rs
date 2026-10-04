@@ -7,8 +7,9 @@ use crate::sql::{parse_create_table, Definition};
 
 /// The schema table's root page.
 pub(crate) const SCHEMA_ROOT_PAGE: u32 = 1;
-/// The names the schema table answers to.
-const SCHEMA_TABLE_NAMES: [&str; 2] = ["sqlite_schema", "sqlite_master"];
+/// The schema table's name, and the names it answers to.
+pub(crate) const SCHEMA_TABLE_NAME: &str = "sqlite_schema";
+const SCHEMA_TABLE_NAMES: [&str; 2] = [SCHEMA_TABLE_NAME, "sqlite_master"];
 
 /// One row of the schema table: a table, index, view or trigger.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -135,7 +136,7 @@ impl Table {
             generated: None,
         };
         Self {
-            name: SCHEMA_TABLE_NAMES[0].to_owned(),
+            name: SCHEMA_TABLE_NAME.to_owned(),
             root_page: SCHEMA_ROOT_PAGE,
             sql: None,
             kind: TableKind::Rowid,

@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 32cd3d48bf7edbf160b6a125e3095bf864b2e17a2488f4d0935bfe371502e8f5 # shrinks to fixture = "autovacuum.db", flips = [(5971450299930389224, 132)], cut = 3072
+cc ba05d80291b1a8bac57d63635a4e9367e31d279a30fba68746dddedc21b7ff50 # shrinks to fixture = "recovery/churn.db", flips = [(4481074949527674037, 0)], cut = 47104

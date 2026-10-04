@@ -60,11 +60,13 @@ pub fn oracle_value(value: &json::Value) -> Value {
 pub struct Walk {
     pub rows: usize,
     pub index_entries: usize,
+    /// Records recovered, current and older versions.
+    pub recovered: usize,
     pub problems: Vec<String>,
 }
 
 /// Read every row of every rowid table and every entry of every index,
-/// as a reader of untrusted evidence would.
+/// and recover deleted records, as a reader of untrusted evidence would.
 pub fn walk(db: &Database) -> Walk {
     // Whole pages, however damaged the input.
     assert_eq!(db.image().len() % db.header.page_size as usize, 0);
@@ -83,5 +85,8 @@ pub fn walk(db: &Database) -> Walk {
             walk.problems.extend_from_slice(entries.problems());
         }
     }
+    let recovered = db.recover();
+    walk.recovered = recovered.records.len() + recovered.older_versions.len();
+    walk.problems.extend(recovered.problems);
     walk
 }

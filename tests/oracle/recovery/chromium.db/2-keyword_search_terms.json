@@ -1,0 +1,4 @@
+[{"table":"keyword_search_terms","kind":"deleted","rowid":7,"c0":"integer:2","c1":"integer:35","c2":"text:Search Term 35","c3":"text:search term 35"},
+{"table":"keyword_search_terms","kind":"deleted","rowid":8,"c0":"integer:2","c1":"integer:40","c2":"text:Search Term 40","c3":"text:search term 40"},
+{"table":"keyword_search_terms","kind":"deleted","rowid":9,"c0":"integer:2","c1":"integer:45","c2":"text:Search Term 45","c3":"text:search term 45"},
+{"table":"keyword_search_terms","kind":"deleted","rowid":10,"c0":"integer:2","c1":"integer:50","c2":"text:Search Term 50","c3":"text:search term 50"}]

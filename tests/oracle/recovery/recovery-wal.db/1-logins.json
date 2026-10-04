@@ -1,0 +1,7 @@
+[{"table":"logins","kind":"deleted","rowid":4,"c0":"integer:4","c1":"text:https://login04.example.org/","c2":"text:user04@example.net","c3":"blob:0000000138BFFE4C","c4":"integer:13370345600000000","c5":"integer:4"},
+{"table":"logins","kind":"deleted","rowid":5,"c0":"integer:5","c1":"text:https://login05.example.org/","c2":"text:user05@example.net","c3":"blob:0000000186EFFDDF","c4":"integer:13370432000000000","c5":"integer:5"},
+{"table":"logins","kind":"deleted","rowid":6,"c0":"integer:6","c1":"text:https://login06.example.org/","c2":"text:user06@example.net","c3":"blob:00000001D51FFD72","c4":"integer:13370518400000000","c5":"integer:0"},
+{"table":"logins","kind":"deleted","rowid":20,"c0":"integer:20","c1":"text:https://login20.example.org/","c2":"text:user20@example.net","c3":"blob:000000061BBFF77C","c4":"integer:13371728000000000","c5":"integer:2"},
+{"table":"logins","kind":"deleted","rowid":33,"c0":"integer:33","c1":"text:https://login33.example.org/","c2":"text:user33@example.net","c3":"blob:0000000A142FF1F3","c4":"integer:13372851200000000","c5":"integer:3"},
+{"table":"logins","kind":"deleted","rowid":34,"c0":"integer:34","c1":"text:https://login34.example.org/","c2":"text:user34@example.net","c3":"blob:0000000A625FF186","c4":"integer:13372937600000000","c5":"integer:4"},
+{"table":"logins","kind":"deleted","rowid":40,"c0":"integer:40","c1":"text:https://login40.example.org/","c2":"text:user40@example.net","c3":"blob:0000000C377FEEF8","c4":"integer:13373456000000000","c5":"integer:4"}]

@@ -1,0 +1,10 @@
+[{"table":"tags","kind":"deleted","rowid":2,"c0":"text:tag-0022","c1":"integer:66","c2":"real:5.625"},
+{"table":"tags","kind":"deleted","rowid":6,"c0":"text:tag-0026","c1":"integer:78","c2":"real:6.625"},
+{"table":"tags","kind":"deleted","rowid":10,"c0":"text:tag-0030","c1":"integer:90","c2":"real:7.625"},
+{"table":"tags","kind":"deleted","rowid":14,"c0":"text:tag-0034","c1":"integer:102","c2":"real:8.625"},
+{"table":"tags","kind":"deleted","rowid":18,"c0":"text:tag-0038","c1":"integer:114","c2":"real:9.625"},
+{"table":"tags","kind":"deleted","rowid":22,"c0":"text:tag-0042","c1":"integer:126","c2":"real:10.625"},
+{"table":"tags","kind":"deleted","rowid":26,"c0":"text:tag-0046","c1":"integer:138","c2":"real:11.625"},
+{"table":"tags","kind":"deleted","rowid":30,"c0":"text:tag-0050","c1":"integer:150","c2":"real:12.625"},
+{"table":"tags","kind":"deleted","rowid":34,"c0":"text:tag-0054","c1":"integer:162","c2":"real:13.625"},
+{"table":"tags","kind":"deleted","rowid":38,"c0":"text:tag-0058","c1":"integer:174","c2":"real:14.625"}]

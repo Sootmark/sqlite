@@ -21,7 +21,7 @@ trap 'rm -rf "$work"' EXIT
 cd "$work"
 
 # A value as "type:value" text; @ stands for the expression.
-typed="CASE typeof(@) WHEN 'integer' THEN 'integer:' || @ WHEN 'real' THEN 'real:' || printf('%.17g', @) WHEN 'text' THEN 'text:' || @ WHEN 'blob' THEN 'blob:' || hex(@) END"
+typed="CASE typeof(@) WHEN 'integer' THEN 'integer:' || @ WHEN 'real' THEN 'real:' || printf('%!.17g', @) WHEN 'text' THEN 'text:' || @ WHEN 'blob' THEN 'blob:' || hex(@) END"
 # The same, quoted to sit inside an SQL string literal.
 typed_literal=$(printf '%s' "$typed" | sed "s/'/''/g")
 
