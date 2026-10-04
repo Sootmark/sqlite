@@ -1,0 +1,1 @@
+[{"c0":"text:table","c1":"text:big_pages","c2":"text:big_pages","c3":"integer:2","c4":"text:CREATE TABLE big_pages (id INTEGER PRIMARY KEY, body TEXT)"}]

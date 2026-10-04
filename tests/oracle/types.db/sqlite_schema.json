@@ -1,0 +1,12 @@
+[{"c0":"text:table","c1":"text:kinds","c2":"text:kinds","c3":"integer:2","c4":"text:CREATE TABLE kinds (\n    id INTEGER PRIMARY KEY,\n    \"odd \"\"name\"\"\" TEXT,\n    [bracket col] BLOB,\n    `tick` REAL,\n    n NUMERIC DEFAULT 0, added TEXT DEFAULT 'later', added_real REAL DEFAULT -2, -- a comment\n    CHECK (id > 0)\n)"},
+{"c0":"text:index","c1":"text:kinds_n","c2":"text:kinds","c3":"integer:3","c4":"text:CREATE INDEX kinds_n ON kinds (n)"},
+{"c0":"text:table","c1":"text:alias_by_table_key","c2":"text:alias_by_table_key","c3":"integer:4","c4":"text:CREATE TABLE alias_by_table_key (x INTEGER, y TEXT, PRIMARY KEY (x DESC))"},
+{"c0":"text:table","c1":"text:no_alias_desc","c2":"text:no_alias_desc","c3":"integer:6","c4":"text:CREATE TABLE no_alias_desc (x INTEGER PRIMARY KEY DESC, y TEXT)"},
+{"c0":"text:index","c1":"text:sqlite_autoindex_no_alias_desc_1","c2":"text:no_alias_desc","c3":"integer:7","c4":null},
+{"c0":"text:table","c1":"text:no_alias_int","c2":"text:no_alias_int","c3":"integer:9","c4":"text:CREATE TABLE no_alias_int (x INT PRIMARY KEY, y TEXT)"},
+{"c0":"text:index","c1":"text:sqlite_autoindex_no_alias_int_1","c2":"text:no_alias_int","c3":"integer:10","c4":null},
+{"c0":"text:table","c1":"text:gen","c2":"text:gen","c3":"integer:11","c4":"text:CREATE TABLE gen (\n    a INTEGER, b TEXT, c AS (a * 2) VIRTUAL,\n    d TEXT GENERATED ALWAYS AS (upper(b)) STORED, e TEXT\n)"},
+{"c0":"text:table","c1":"text:wr","c2":"text:wr","c3":"integer:12","c4":"text:CREATE TABLE wr (k TEXT PRIMARY KEY, v) WITHOUT ROWID"},
+{"c0":"text:table","c1":"text:quoted table","c2":"text:quoted table","c3":"integer:14","c4":"text:CREATE TABLE \"quoted table\" (\"a b\", 'c' TEXT /* inline */, d DEFAULT x'0a0b')"},
+{"c0":"text:view","c1":"text:v","c2":"text:v","c3":"integer:0","c4":"text:CREATE VIEW v AS SELECT id FROM kinds"},
+{"c0":"text:trigger","c1":"text:trg","c2":"text:gen","c3":"integer:0","c4":"text:CREATE TRIGGER trg AFTER INSERT ON gen BEGIN SELECT 1; END"}]

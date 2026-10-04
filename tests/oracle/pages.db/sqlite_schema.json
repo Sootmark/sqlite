@@ -1,0 +1,3 @@
+[{"c0":"text:table","c1":"text:events","c2":"text:events","c3":"integer:2","c4":"text:CREATE TABLE events (id INTEGER PRIMARY KEY, kind TEXT, note TEXT, data BLOB)"},
+{"c0":"text:index","c1":"text:events_note","c2":"text:events","c3":"integer:42","c4":"text:CREATE INDEX events_note ON events (note)"},
+{"c0":"text:index","c1":"text:events_kind","c2":"text:events","c3":"integer:73","c4":"text:CREATE INDEX events_kind ON events (kind, id)"}]

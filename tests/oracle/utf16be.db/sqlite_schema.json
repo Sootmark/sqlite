@@ -1,0 +1,1 @@
+[{"c0":"text:table","c1":"text:wörter","c2":"text:wörter","c3":"integer:2","c4":"text:CREATE TABLE \"wörter\" (id INTEGER PRIMARY KEY, word TEXT, note TEXT)"}]

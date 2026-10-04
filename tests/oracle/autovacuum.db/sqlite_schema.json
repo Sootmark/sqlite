@@ -1,0 +1,2 @@
+[{"c0":"text:table","c1":"text:a","c2":"text:a","c3":"integer:3","c4":"text:CREATE TABLE a (x INTEGER)"},
+{"c0":"text:table","c1":"text:b","c2":"text:b","c3":"integer:4","c4":"text:CREATE TABLE b (y TEXT)"}]

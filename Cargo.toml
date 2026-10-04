@@ -1,0 +1,30 @@
+[package]
+name = "sootmark-sqlite"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+description = "Read-only reader of SQLite database files for forensics: header, b-trees, overflow chains, records, the schema, and committed frames of a write-ahead log, damage reported rather than fatal."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/Sootmark/sqlite"
+homepage = "https://sootmark.com"
+keywords = ["forensics", "dfir", "incident-response", "sqlite", "wal"]
+# Sources only: test fixtures stay in the repository.
+include = ["/src", "/README.md", "/LICENSE-APACHE", "/LICENSE-MIT"]
+
+[lib]
+name = "sqlite"
+
+[dev-dependencies]
+proptest = "1"
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+cast_possible_wrap = "allow"
+cast_precision_loss = "allow"
