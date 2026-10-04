@@ -204,6 +204,15 @@ impl<'a> Database<'a> {
         }
     }
 
+    /// The database as one file, as it reads: the log's committed pages in
+    /// place of the file's, what SQLite would write if it checkpointed the
+    /// log. For tools that take one file; [`Database::open`] reads it back
+    /// the same.
+    #[must_use]
+    pub fn image(&self) -> Vec<u8> {
+        self.pages.image()
+    }
+
     /// The table named `name` (ignoring ASCII case, as SQL does).
     #[must_use]
     pub fn table(&self, name: &str) -> Option<&Table> {

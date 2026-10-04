@@ -1,6 +1,6 @@
 [package]
 name = "sootmark-sqlite"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.80"
 description = "Read-only reader of SQLite database files for forensics: header, b-trees, overflow chains, records, the schema, and committed frames of a write-ahead log, damage reported rather than fatal."

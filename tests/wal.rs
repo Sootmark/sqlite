@@ -46,6 +46,19 @@ fn the_log_holds_what_the_file_does_not() {
 }
 
 #[test]
+fn the_image_reads_as_the_file_and_its_log() {
+    let (file, wal) = files();
+    let with_log = Database::open_with_wal(&file, &wal).unwrap();
+    let image = with_log.image();
+    assert_eq!(image.len(), with_log.page_count as usize * PAGE_SIZE);
+    let alone = Database::open(&image).unwrap();
+    assert_eq!(alone.schema, with_log.schema);
+    assert_eq!(notes(&alone), notes(&with_log));
+    // Without a log, the file itself.
+    assert_eq!(Database::open(&file).unwrap().image(), file);
+}
+
+#[test]
 fn the_summary_counts_uncommitted_and_stale_frames() {
     let (file, wal) = files();
     let db = Database::open_with_wal(&file, &wal).unwrap();

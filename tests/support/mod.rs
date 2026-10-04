@@ -66,6 +66,8 @@ pub struct Walk {
 /// Read every row of every rowid table and every entry of every index,
 /// as a reader of untrusted evidence would.
 pub fn walk(db: &Database) -> Walk {
+    // Whole pages, however damaged the input.
+    assert_eq!(db.image().len() % db.header.page_size as usize, 0);
     let mut walk = Walk {
         problems: db.problems.clone(),
         ..Walk::default()
